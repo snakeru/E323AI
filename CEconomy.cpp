@@ -236,7 +236,7 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 		case BUILD_MPROVIDER: {
 			goal = getClosestOpenMetalSpot(group);
 			bool canBuildMMaker = (eIncome - eUsage) >= METAL2ENERGY || eexceeding;
-			if (areMMakersEnabled && canBuildMMaker && ((goal == ZeroVector) || (goal != ZeroVector) && (ai->pathfinder->getETA(group, goal) < 30*10))) {
+			if (areMMakersEnabled && canBuildMMaker && ((goal == ZeroVector) || (goal != ZeroVector) && (ai->pathfinder->getETA(group, goal) > 30*10))) { // more than 10 seconds to metalspot
 				UnitType *mmaker = ai->unittable->canBuild(unit->type, LAND|MMAKER);
 				if (mmaker != NULL) {
 					ai->tasks->addBuildTask(bt, mmaker, group, pos);
