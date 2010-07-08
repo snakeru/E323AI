@@ -177,34 +177,49 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 	/* Perform the build */
 	switch(bt) {
 		case BUILD_EPROVIDER: {
-			if ((i->second->def->windGenerator > EPS) && alternativesCount > 1) {
-	        	if (!windmap || ai->cb->GetCurWind() < 10.0f) {
-	        		// select first non-wind emaker...
-	        		i = candidates.begin();
-	        		while (i != candidates.end() && (i->second->def->windGenerator))
-	        			i++;
-					if (i == candidates.end())
-						// all emakers are based on wind power
-						i--;
-	        	}
-			}
-			
-			if (i->second->def->needGeo && alternativesCount > 1) {
-				float e = eNow/eStorage;
-				goal = getClosestOpenGeoSpot(group);
-				if (goal == ZeroVector || (e > 0.15f && ai->pathfinder->getETA(group, goal) > 30*15)) {
-					// build anything another...
-	        		i = candidates.begin();
-	        		while (i != candidates.end() && (i->second->def->windGenerator || i->second->def->needGeo))
-	        			i++;
-					if (i == candidates.end())
-						// all emakers are geo- or wind-based
-						i--;
-					goal = pos;
+                /*
+                    1. iterate over candidates
+                    2. skip windgens if there is no wind
+                    3. skip geotermals if there is no geospots
+                    4. put remaining items into second list sorted by: cost - wind_penalty - geo_penalty
+                    5. iterate over whole second list, find latest affordable item (it will be most expensive).
+                       - if none found - take first w/o penalty
+                        - if still none found - take first
+                */
+			std::multimap<float, UnitType*> candidates2;
+			float penalty;
+			float3 geo_goal = pos;
+			float e = eNow/eStorage; 
+			geo_goal = getClosestOpenGeoSpot(group);
+			for (i = candidates.begin() ; i != candidates.end() ; i++) {
+				penalty = 0;
+				if (i->second->def->windGenerator > EPS) {
+					if (!windmap) continue;
+					else if (ai->cb->GetCurWind() < 10.0f) penalty += 1000000;
 				}
+				if (i->second->def->needGeo) {
+					if (geo_goal == ZeroVector) continue;
+					else if (e > 0.15f && ai->pathfinder->getETA(group, goal) > 30*15) penalty += 10000000;
+				}
+				candidates2.insert(std::pair<float,UnitType*>(float(i->first)-penalty, i->second));
 			}
 
-			ai->tasks->addBuildTask(bt, i->second, group, goal);
+			if (candidates2.empty())
+				return; // builder can build nothing we need
+
+			UnitType *affordable_unit, *first_wo_penalty;
+			affordable_unit=first_wo_penalty=0;
+
+			for (i = candidates2.begin() ; i != candidates2.end() ; i++) {
+				if (canAffordToBuild(unit->type, i->second)) affordable_unit = i->second;
+				if ((!first_wo_penalty) && (float(i->first)>=0)) first_wo_penalty = i->second;
+			}
+
+			if (!affordable_unit) affordable_unit = first_wo_penalty;
+			if (!affordable_unit) affordable_unit = candidates2.begin()->second;
+			if (affordable_unit->def->needGeo) goal=geo_goal;
+
+			ai->tasks->addBuildTask(bt, affordable_unit, group, goal);
 
 			break;
 		}
