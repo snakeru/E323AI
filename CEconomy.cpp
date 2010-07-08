@@ -310,7 +310,7 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 				*/				
 				
 				float m = mNow / mStorage;
-			
+				if ((unit->def->isCommander) && (numFactories <= 0)) affordable = true; // HACK: we should pause builder after completing a task (factory is not affordable if unit just finished building and still has his e/m consumption >0 )
 				switch(state) {
 				case 0: case 1: case 2: {
 					build = (m > 0.4f && affordable);
