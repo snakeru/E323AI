@@ -716,8 +716,8 @@ void CEconomy::updateIncomes(int frame) {
 	mexceeding = (mNow > (mStorage*0.9f) && mUsage < mIncome);
 	eexceeding = (eNow > (eStorage*0.9f) && eUsage < eIncome);
 
-	mRequest   = (mNow < (mStorage*0.5f));
-	eRequest   = (eNow < (eStorage*0.5f));
+	mRequest   = (mNow < (mStorage*0.5f)) && !estall;
+	eRequest   = (eNow < (eStorage*0.5f)) && !mstall;
 
 	int tstate = ai->cfgparser->determineState(mIncome, eIncome);
 	if (tstate != state) {
