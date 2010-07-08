@@ -235,29 +235,58 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 
 		case BUILD_MPROVIDER: {
 			goal = getClosestOpenMetalSpot(group);
-			bool canBuildMMaker = (eIncome - eUsage) >= METAL2ENERGY || eexceeding;
-			if (areMMakersEnabled && canBuildMMaker && ((goal == ZeroVector) || (goal != ZeroVector) && (ai->pathfinder->getETA(group, goal) > 30*10))) { // more than 10 seconds to metalspot
-				UnitType *mmaker = ai->unittable->canBuild(unit->type, LAND|MMAKER);
-				if (mmaker != NULL) {
+			UnitType *mmaker = ai->unittable->canBuild(unit->type, LAND|MMAKER);
+			/* Very simple choice here - check if we have choice at all */
+			if ((goal == ZeroVector) && (mmaker == NULL))
+				break; // we can't build nothing
+			if ((goal != ZeroVector) && (mmaker == NULL)) {
+				ai->tasks->addBuildTask(bt, i->second, group, goal);
+				break; // it can't build mmakers, but there is free metal spot - going for it
+			}
+			bool canBuildMMaker = areMMakersEnabled && ((eIncome - eUsage) >= METAL2ENERGY || eexceeding) && (mmaker != NULL);
+			if (goal == ZeroVector) {
+				// ok, there are no free metal spots, but we can build mmakers. Build something.
+				if (canBuildMMaker)
 					ai->tasks->addBuildTask(bt, mmaker, group, pos);
-					break;
-				}
+				else
+					buildOrAssist(group, BUILD_EPROVIDER, EMAKER|LAND);
+				break;
 			}
-			if (goal != ZeroVector) {
-				bool tooSmallIncome = mIncome < 3.0f;
-				bool isComm = unit->def->isCommander;
-				if (tooSmallIncome || !isComm || ai->pathfinder->getETA(group, goal) < 30*10) {
-					ai->tasks->addBuildTask(bt, i->second, group, goal);
-				}
-				else if (areMMakersEnabled && canBuildMMaker) {
-					UnitType *mmaker = ai->unittable->canBuild(unit->type, LAND|MMAKER);
-					if (mmaker != NULL)
-						ai->tasks->addBuildTask(bt, mmaker, group, pos);
-				}
-			}
-			else {
+			bool willBuildMMak = false;
+			float eta = ai->pathfinder->getETA(group, goal);
+			/* the choice is not THAT easy. Let's think then - what should we build - mmaker or mex:
+			Decision matrix:
+			         eReq&ms eReq&!ms  ms  !ms  eexc&ms eexc&!ms
+			Too Far   MMak     mex    MMak MMak  MMak    MMak
+			  Far      mex     mex    MMak mex   MMak    MMak
+			  Near     mex     mex    mex  mex   mex     mex
+			
+			    1. if   mspot is near - build mex
+			    2. elif eexceeding - build mmak
+			    3. elif mspot is too far:
+			      3.1 we low on energy - build mex
+			      3.2 build mmak
+			    4. else (mspot is in mid-range)
+			      4.1 not mstalling - build mex
+			      4.2 build mak
+			*/
+			if (eta < 30*15);                    /*  1  */
+			else if (eexceeding)                 /*  2  */
+				willBuildMMak = true;
+			else if (eta > 30*25) {              /*  3  */
+				if (eRequest);               /* 3.1 */
+				else willBuildMMak = true;   /* 3.2 */
+			} else                               /*  4  */
+				if (!mstall);                /* 4.1 */
+				else willBuildMMak = true;   /* 4.2 */
+			
+			// hard part of decision is done. Do it
+			if (!willBuildMMak)
+				ai->tasks->addBuildTask(bt, i->second, group, goal);
+			else if (canBuildMMaker)
+				ai->tasks->addBuildTask(bt, mmaker, group, pos);
+			else
 				buildOrAssist(group, BUILD_EPROVIDER, EMAKER|LAND);
-			}
 			break;
 		}
 
@@ -664,7 +693,7 @@ void CEconomy::preventStalling() {
 
 		/* Unless it is the commander, he should be fixing the problem */
 		if (i->second->group->units.begin()->second->def->isCommander) {
-			if ((mstall && !eRequest) || (estall && !mstall)) {
+			if ((mstall && !estall) || (estall && !mstall)) {
 				i->second->remove();
 				return;
 			}
@@ -716,8 +745,8 @@ void CEconomy::updateIncomes(int frame) {
 	mexceeding = (mNow > (mStorage*0.9f) && mUsage < mIncome);
 	eexceeding = (eNow > (eStorage*0.9f) && eUsage < eIncome);
 
-	mRequest   = (mNow < (mStorage*0.5f)) && !estall;
-	eRequest   = (eNow < (eStorage*0.5f)) && !mstall;
+	mRequest   = (mNow < (mStorage*0.5f));
+	eRequest   = (eNow < (eStorage*0.5f));
 
 	int tstate = ai->cfgparser->determineState(mIncome, eIncome);
 	if (tstate != state) {
