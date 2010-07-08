@@ -104,11 +104,8 @@ void CIntel::init() {
 	}
 	
 	// FIXME: engineer better decision algo
-	if (ai->gamemap->IsMetalMap())
-		strategyTechUp = true;
-	else
-		// NOTE: clock() gives much better results than rng.RndFloat() (at least under MSVC)
-		strategyTechUp = ((clock() % 3) == 0);
+	// NOTE: clock() gives much better results than rng.RndFloat() (at least under MSVC)
+	strategyTechUp = ((clock() % 3) == 0);
 
 	LOG_II("Tech-up strategy: " << strategyTechUp)
 
