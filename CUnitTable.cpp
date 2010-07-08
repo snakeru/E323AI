@@ -164,6 +164,7 @@ void CUnitTable::remove(ARegistrar &object) {
 	idle.erase(unit->key);
 	metalMakers.erase(unit->key);
 	activeUnits.erase(unit->key);
+	assisters.erase(unit->key);
 	factories.erase(unit->key);
 	defenses.erase(unit->key);
 	unitsAliveTime.erase(unit->key);
@@ -475,6 +476,7 @@ bool CUnitTable::gotFactory(unsigned c) {
 }
 
 void CUnitTable::getBuildables(UnitType *ut, unsigned include, unsigned exclude, std::multimap<float, UnitType*> &candidates) {
+        /* include categories i, but exclude categories e */
 	std::vector<unitCategory> incCats, excCats;
 	for (unsigned int i = 0; i < cats.size(); i++) {
 		if (include&cats[i])

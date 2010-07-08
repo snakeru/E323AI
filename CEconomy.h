@@ -50,6 +50,7 @@ class CEconomy: public ARegistrar {
 
 		/* stalling/exceeding vars, updated in updateIncomes() */
 		bool mstall, estall, mexceeding, eexceeding, areMMakersEnabled;
+		int latest_factory;
 
 		/* Returns a fresh CGroup instance */
 		CGroup* requestGroup();

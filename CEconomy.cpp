@@ -21,6 +21,7 @@
 
 CEconomy::CEconomy(AIClasses *ai): ARegistrar(700, std::string("economy")) {
 	this->ai = ai;
+	latest_factory = 0;
 	state = 0;
 	incomes  = 0;
 	mNow     = mNowSummed     = eNow     = eNowSummed     = 0.0f;
@@ -129,8 +130,16 @@ void CEconomy::addUnitOnFinished(CUnit &unit) {
 	if (c&BUILDER) {
 		CGroup *group = requestGroup();
 		group->addUnit(unit);
-		if (c&FACTORY)
+		if (c&FACTORY) {
 			ai->unittable->factories[unit.key] = &unit;
+			latest_factory = unit.key;
+		}
+	}
+	else if (c&ASSISTER) {
+//		nano turret. Set it to patrol mode and leave it alone
+		unit.patrol(ZeroVector);
+		unit.move_state(ROAM);
+		ai->unittable->assisters[unit.key] = &unit;
 	}
 	else if (c&MMAKER) {
 		ai->unittable->metalMakers[unit.key] = &unit;
@@ -256,6 +265,23 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 			/* Start building storage after enough ingame time */
 			if (!taskInProgress(bt) && ai->cb->GetCurrentFrame() > 30*60*7) {
 				pos = ai->defensematrix->getBestDefendedPos(0);
+				ai->tasks->addBuildTask(bt, i->second, group, pos);
+			}
+			break;
+		}
+
+		case BUILD_NANOTR: {
+			int numFactories = ai->unittable->factories.size();
+			int allowedAssisters = numFactories*state;
+			CUnit *factory = ai->unittable->getUnit(latest_factory);
+			if ((!factory) && numFactories>0) { // latest factory destroyed but we still have more
+				factory = ai->unittable->factories.begin()->second;
+				latest_factory = factory->key;
+			}
+			if (ai->unittable->assisters.size()<allowedAssisters) {
+				if (factory) pos=factory->group->pos();
+				else if (!affordable) break;
+				else pos = ai->defensematrix->getBestDefendedPos(0);
 				ai->tasks->addBuildTask(bt, i->second, group, pos);
 			}
 			break;

@@ -59,6 +59,7 @@ class CUnitTable: public ARegistrar {
 		std::map<int, bool>         builders;
 		std::map<int, CUnit*>       metalMakers;
 		std::map<int, CUnit*>       activeUnits;
+		std::map<int, CUnit*>       assisters;
 		std::map<int, CUnit*>       factories;
 		std::map<int, CUnit*>       defenses;
 		std::map<int, CUnit*>       energyStorages;

@@ -17,6 +17,7 @@ enum facing{SOUTH, EAST, NORTH, WEST, NONE};
 
 /* Map quadrants */
 enum quadrant {NORTH_WEST, NORTH_EAST, SOUTH_WEST, SOUTH_EAST};
+enum move_states {HOLD_POSITION, MANEVEUR, ROAM};
 
 class CUnit: public ARegistrar {
 	public:
@@ -62,6 +63,12 @@ class CUnit: public ARegistrar {
 
 		/* Move unit with id uid to position pos */
 		bool move(float3 &pos, bool enqueue = false);
+
+		/* Set unit to patrol area */
+		bool patrol(const float3 &pos, bool enqueue = true);
+
+		/* Set unit's move state */
+		bool move_state(move_states state, bool enqueue = false);
 
 		/* Set a unit (e.g. mmaker) on or off */
 		bool setOnOff(bool on);

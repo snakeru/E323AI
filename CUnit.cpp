@@ -143,6 +143,31 @@ bool CUnit::move(float3 &pos, bool enqueue) {
 	return false;
 }
 
+bool CUnit::patrol(const float3 &pos, bool enqueue) {
+	Command c = createPosCommand(CMD_PATROL, pos);
+	
+	if (c.id != 0) {
+		if (enqueue)
+			c.options |= SHIFT_KEY;
+		ai->cb->GiveOrder(key, &c);
+		ai->unittable->idle[key] = false;
+		return true;
+	}
+	return false;
+}
+
+bool CUnit::move_state(move_states state, bool enqueue) {
+	Command c = createTargetCommand(CMD_MOVE_STATE, state);
+	
+	if (c.id != 0) {
+		if (enqueue)
+			c.options |= SHIFT_KEY;
+		ai->cb->GiveOrder(key, &c);
+		return true;
+	}
+	return false;
+}
+
 bool CUnit::guard(int target, bool enqueue) {
 	Command c = createTargetCommand(CMD_GUARD, target);
 
