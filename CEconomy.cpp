@@ -429,9 +429,108 @@ float3 CEconomy::getClosestOpenGeoSpot(CGroup &group) {
 	return getBestSpot(group, GameMap::geospots, takenGeo, false);
 }
 
+void CEconomy::commandBuilderGroup(CGroup *group) {
+/*
+ if mstall or estall - build resources
+ build factory (limited amount)
+ commander -> help factory
+ improve defences
+ build storages or mmakers
+ build energy if mmakers disabled
+ build nanotowers
+ help factory
+ build more factories
+ build more resources
+*/
+			CUnit *unit = group->firstUnit();
+			float3 pos = group->pos();
+			/* If we are mstalling deal with it */
+			if (mstall) {
+				buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
+				if (group->busy) return;
+			}
+			/* If we are estalling deal with it */
+			if (estall) {
+				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
+				if (group->busy) return;
+			}
+			/* See if this unit can build desired factory */
+			int maxTechLevel = ai->cfgparser->getMaxTechLevel();
+			unsigned int factory = getNextFactoryToBuild(unit, maxTechLevel);
+			if ((factory > 0) && (ai->unittable->factories.size()<(1+state/2))) buildOrAssist(*group, BUILD_FACTORY, factory);
+			if (group->busy) return;
+
+			if (unit->def->isCommander) {
+				ATask *task = NULL;
+				/* If we can afford to assist a lab and it's close enough, do so */
+				if ((task = canAssistFactory(*group)) != NULL)
+					ai->tasks->addAssistTask(*task, *group);
+			}
+			if (group->busy) return;
+
+			/* See if we can build defense */
+			if (ai->defensematrix->getClusters()*1.5 > ai->unittable->defenses.size())
+				buildOrAssist(*group, BUILD_AG_DEFENSE, DEFENSE, ANTIAIR);
+			if (group->busy) return;
+
+			/* If we are overflowing energy build a estorage */
+			if (eexceeding)
+				if (ai->unittable->energyStorages.size() >= ai->cfgparser->getMaxTechLevel())
+					buildOrAssist(*group, BUILD_ESTORAGE, LAND|MMAKER);
+				else
+					buildOrAssist(*group, BUILD_ESTORAGE, LAND|ESTORAGE);
+			if (group->busy) return;
+
+			/* If we are overflowing metal build an mstorage */
+			if (mexceeding)
+				buildOrAssist(*group, BUILD_MSTORAGE, LAND|MSTORAGE);
+			if (group->busy) return;
+
+			/* If both requested, see what is required most */
+			if (eRequest && mRequest)
+				if ((mNow / mStorage) > (eNow / eStorage))
+					buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
+				else
+					buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
+			if (group->busy) return;
+
+			/* Else just provide that which is requested */
+			if (eRequest)
+				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
+			if (group->busy) return;
+
+			if (mRequest)
+				buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
+			if (group->busy) return;
+
+			/* If we have disabled mmakers - build more energy */
+			if (!areMMakersEnabled) {
+				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
+				if (group->busy) return;
+			}
+
+			buildOrAssist(*group, BUILD_NANOTR, LAND|STATIC|ASSISTER, BUILDER);
+			if (group->busy) return;
+
+			ATask *task = NULL;
+			/* If we can afford to assist a lab and it's close enough, do so */
+			if ((task = canAssistFactory(*group)) != NULL)
+				ai->tasks->addAssistTask(*task, *group);
+			if (group->busy) return;
+
+			/* if we need more factories - it's good time to build them */
+			if (factory > 0) buildOrAssist(*group, BUILD_FACTORY, factory);
+			if (group->busy) return;
+
+			/* Otherwise just expand */
+			if ((mNow / mStorage) > (eNow / eStorage))
+				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
+			else
+				buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
+}
+
 void CEconomy::update(int frame) {
 	int builderGroupsNum = 0;
-	int maxTechLevel = ai->cfgparser->getMaxTechLevel();
 
 	/* See if we can improve our eco by controlling metalmakers */
 	controlMetalMakers();
@@ -441,6 +540,7 @@ void CEconomy::update(int frame) {
 
 	/* Update idle worker groups */
 	std::map<int, CGroup*>::iterator i;
+	CUnit *commander = 0;
 	for (i = activeGroups.begin(); i != activeGroups.end(); i++) {
 		CGroup *group = i->second;
 		CUnit *unit = group->firstUnit();
@@ -475,108 +575,11 @@ void CEconomy::update(int frame) {
 			LOG_WW("CEconomy::update AI can't handle static builders except factories")
 			continue;
 		}
-		
-		float3 pos = group->pos();
 
-		if (unit->def->isCommander) {
-			/* If we are mstalling deal with it */
-			if (mstall) {
-				buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
-				if (group->busy) continue;
-			}
-			/* If we are estalling deal with it */
-			if (estall) {
-				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
-				if (group->busy) continue;
-			}
-			/* If we don't have a factory, build one */
-			if (ai->unittable->factories.empty()) {
-				unsigned int factory = getNextFactoryToBuild(unit, maxTechLevel);
-				if (factory > 0)
-					buildOrAssist(*group, BUILD_FACTORY, factory);
-				if (group->busy) continue;
-			}
-			/* If we are exceeding and don't have estorage yet, build estorage */
-			if (eexceeding && !ai->unittable->factories.empty()) {
-				if (ai->unittable->energyStorages.size() >= ai->cfgparser->getMaxTechLevel())
-					buildOrAssist(*group, BUILD_ESTORAGE, LAND|MMAKER);
-				else
-					buildOrAssist(*group, BUILD_ESTORAGE, LAND|ESTORAGE);
-				if (group->busy) continue;
-			}
-			/* If we can assist a lab and it's close enough, do so */
-			ATask *task = NULL;
-			if ((task = canAssistFactory(*group)) != NULL) {
-				ai->tasks->addAssistTask(*task, *group);
-				if (group->busy) continue;
-			}
-		}
-		else {
-			/* If we are estalling deal with it */
-			if (estall) {
-				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
-				if (group->busy) continue;
-			}
-			/* If we are mstalling deal with it */
-			if (mstall) {
-				buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
-				if (group->busy) continue;
-			}
-			/* See if this unit can build desired factory */
-			unsigned int factory = getNextFactoryToBuild(unit, maxTechLevel);
-			if (factory > 0)
-				buildOrAssist(*group, BUILD_FACTORY, factory);
-			if (group->busy) continue;
-			/* See if we can build defense */
-			if (ai->defensematrix->getClusters() > ai->unittable->defenses.size()) {
-				buildOrAssist(*group, BUILD_AG_DEFENSE, DEFENSE, ANTIAIR);
-				if (group->busy) continue;
-			}
-			/* If we are overflowing energy build a estorage */
-			if (eexceeding) {
-				if (ai->unittable->energyStorages.size() >= ai->cfgparser->getMaxTechLevel())
-					buildOrAssist(*group, BUILD_ESTORAGE, LAND|MMAKER);
-				else
-					buildOrAssist(*group, BUILD_ESTORAGE, LAND|ESTORAGE);
-				if (group->busy) continue;
-			}
-			/* If we are overflowing metal build an mstorage */
-			if (mexceeding) {
-				buildOrAssist(*group, BUILD_MSTORAGE, LAND|MSTORAGE);
-				if (group->busy) continue;
-			}
-			/* If both requested, see what is required most */
-			if (eRequest && mRequest) {
-				if ((mNow / mStorage) > (eNow / eStorage))
-					buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
-				else
-					buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
-				if (group->busy) continue;
-			}
-			/* Else just provide that which is requested */
-			if (eRequest) {
-				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
-				if (group->busy) continue;
-			}
-			if (mRequest) {
-				buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
-				if (group->busy) continue;
-			}
-			ATask *task = NULL;
-			/* If we can afford to assist a lab and it's close enough, do so */
-			if ((task = canAssistFactory(*group)) != NULL) {
-				ai->tasks->addAssistTask(*task, *group);
-				if (group->busy) continue;
-			}
-			/* Otherwise just expand */
-			if (!ai->gamemap->IsMetalMap()) {
-				if ((mNow / mStorage) > (eNow / eStorage))
-					buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
-				else
-					buildOrAssist(*group, BUILD_MPROVIDER, MEXTRACTOR|LAND);
-			}
-		}
+		if (unit->def->isCommander) commander = unit;
+		else commandBuilderGroup(group);
 	}
+	if (commander) commandBuilderGroup(commander->group);
 
 	if (builderGroupsNum < ai->cfgparser->getMaxWorkers() 
 	&& (builderGroupsNum < ai->cfgparser->getMinWorkers()))

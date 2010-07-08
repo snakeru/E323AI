@@ -105,6 +105,9 @@ class CEconomy: public ARegistrar {
 		/* Can we afford to assist a factory ? */
 		ATask* canAssistFactory(CGroup &group);
 
+		/* Do something with idle builder */
+		void commandBuilderGroup(CGroup *group);
+
 		/* See if we can help with a certain task */
 		ATask* canAssist(buildType t, CGroup &group);
 
