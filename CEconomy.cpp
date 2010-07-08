@@ -227,6 +227,13 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 		case BUILD_MPROVIDER: {
 			goal = getClosestOpenMetalSpot(group);
 			bool canBuildMMaker = (eIncome - eUsage) >= METAL2ENERGY || eexceeding;
+			if (areMMakersEnabled && canBuildMMaker && ((goal == ZeroVector) || (goal != ZeroVector) && (ai->pathfinder->getETA(group, goal) < 30*10))) {
+				UnitType *mmaker = ai->unittable->canBuild(unit->type, LAND|MMAKER);
+				if (mmaker != NULL) {
+					ai->tasks->addBuildTask(bt, mmaker, group, pos);
+					break;
+				}
+			}
 			if (goal != ZeroVector) {
 				bool tooSmallIncome = mIncome < 3.0f;
 				bool isComm = unit->def->isCommander;
@@ -238,11 +245,6 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 					if (mmaker != NULL)
 						ai->tasks->addBuildTask(bt, mmaker, group, pos);
 				}
-			}
-			else if (areMMakersEnabled && canBuildMMaker) {
-				UnitType *mmaker = ai->unittable->canBuild(unit->type, LAND|MMAKER);
-				if (mmaker != NULL)
-					ai->tasks->addBuildTask(bt, mmaker, group, pos);
 			}
 			else {
 				buildOrAssist(group, BUILD_EPROVIDER, EMAKER|LAND);
@@ -578,11 +580,9 @@ void CEconomy::controlMetalMakers() {
 				success++;
 			}
 		}
-		if (success > 0) {
-			estall = false;
-			areMMakersEnabled = false;
-			return;
-		}
+		if (success > 0) estall = false;
+		areMMakersEnabled = false;
+		return;
 	}
 
 	if (eRatio > 0.7f) {
@@ -594,11 +594,9 @@ void CEconomy::controlMetalMakers() {
 				success++;
 			}
 		}
-		if (success > 0) {
-			mstall = false;
-			areMMakersEnabled = true;
-			return;
-		}
+		if (success > 0) mstall = false;
+		areMMakersEnabled = true;
+		return;
 	}
 }
 
