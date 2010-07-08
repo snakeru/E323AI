@@ -34,7 +34,7 @@ void CWishList::push(unsigned categories, buildPriority p) {
 			int iterations = candidates.size();
 			bool affordable = false;
 			while(iterations >= 0) {
-				if (ai->economy->canAffordToBuild(fac, i->second))
+				if (ai->economy->canAffordToBuild(fac, i->second, 0))
 					affordable = true;
 				else
 					break;

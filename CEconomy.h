@@ -80,7 +80,7 @@ class CEconomy: public ARegistrar {
 		bool hasBegunBuilding(CGroup &group);
 
 		/* Can we afford to build this ? */
-		bool canAffordToBuild(UnitType *builder, UnitType *utToBuild);
+		bool canAffordToBuild(UnitType *builder, UnitType *utToBuild, int unitId);
 
 		bool isInitialized() { return initialized; };
 

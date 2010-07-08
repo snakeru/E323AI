@@ -1,11 +1,8 @@
 1. Still doesn't build geos for some reason. Even when all enemies are destroyed and spring left running overnight
 
-2. 'affordable' estimate is wrong - we should substract current builder's actual consumption.
-    (but I can't find how to acquire this info for current builder)
+2. walk over builders by tech level: tech2-tech1-commander. That will allow to quickier use better technologies.
 
-3. walk over builders by tech level: tech2-tech1-commander. That will allow to quickier use better technologies.
-
-4.
+3.
     for techup=false strategy set metal sharing to 70%/70%
     for techup=true  strategy set metal sharing to 95%/95%
     that will allow companion bots to tech-up quickier
@@ -14,4 +11,4 @@
         *packet << myPlayerNum << myTeam << metalShareFraction << energyShareFraction;
         return PacketType(packet);
 
-5. upgrade mexes
+4. upgrade mexes

@@ -168,7 +168,7 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 	int iterations = candidates.size() / (ai->cfgparser->getTotalStates() - state + 1);
 	bool affordable = false;
 	while(iterations >= 0) {
-		if (canAffordToBuild(unit->type, i->second))
+		if (canAffordToBuild(unit->type, i->second, unit->key))
 			affordable = true;
 		else
 			break;
@@ -220,7 +220,7 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 			affordable_unit=first_wo_penalty=0;
 
 			for (i = candidates2.begin() ; i != candidates2.end() ; i++) {
-				if (canAffordToBuild(unit->type, i->second)) affordable_unit = i->second;
+				if (canAffordToBuild(unit->type, i->second, unit->key)) affordable_unit = i->second;
 				if ((!first_wo_penalty) && (float(i->first)>=0)) first_wo_penalty = i->second;
 			}
 
@@ -788,13 +788,20 @@ ATask* CEconomy::canAssistFactory(CGroup &group) {
 	return NULL;
 }
 
-bool CEconomy::canAffordToBuild(UnitType *builder, UnitType *utToBuild) {
+bool CEconomy::canAffordToBuild(UnitType *builder, UnitType *utToBuild, int unitId) {
 	/* NOTE: "Salary" is provided every 32 logical frames */
 	float buildTime   = (utToBuild->def->buildTime / builder->def->buildSpeed) * 32.0f;
 	float mCost       = utToBuild->def->metalCost;
 	float eCost       = utToBuild->def->energyCost;
-	float mPrediction = (mIncome - mUsage - mCost/buildTime)*buildTime - mCost + mNow;
-	float ePrediction = (eIncome - eUsage - eCost/buildTime)*buildTime - eCost + eNow;
+	float mUnitUsage, eUnitUsage;
+	UnitResourceInfo info;
+	mUnitUsage = eUnitUsage = 0;
+	if (ai->cb->GetUnitResourceInfo(unitId, &info)) {
+		mUnitUsage = info.metalUse;
+		eUnitUsage = info.energyUse;
+	}
+	float mPrediction = (mIncome - (mUsage - mUnitUsage) - mCost/buildTime)*buildTime - mCost + mNow;
+	float ePrediction = (eIncome - (eUsage - eUnitUsage) - eCost/buildTime)*buildTime - eCost + eNow;
 	mRequest          = mPrediction < 0.0f;
 	eRequest          = ePrediction < 0.0f;
 	return (mPrediction >= 0.0f && ePrediction >= 0.0f && mNow/mStorage >= 0.1f);
