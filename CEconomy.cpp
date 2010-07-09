@@ -270,10 +270,10 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 			      4.1 not mstalling - build mex
 			      4.2 build mak
 			*/
-			if (eta < 30*15);                    /*  1  */
+			if (eta < 30*25);                    /*  1  */
 			else if (eexceeding)                 /*  2  */
 				willBuildMMak = true;
-			else if (eta > 30*25) {              /*  3  */
+			else if (eta > 30*(unit->def->isCommander?50:150)) {              /*  3  */
 				if (eRequest);               /* 3.1 */
 				else willBuildMMak = true;   /* 3.2 */
 			} else                               /*  4  */
