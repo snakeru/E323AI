@@ -632,7 +632,7 @@ bool CEconomy::taskInProgress(buildType bt) {
 void CEconomy::controlMetalMakers() {
 	float eRatio = eNow / eStorage;
 	std::map<int, CUnit*>::iterator j;
-	if (eRatio < 0.3f) {
+	if ((eRatio < 0.3f) || (mexceeding && !eexceeding)) {
 		int success = 0;
 		for (j = ai->unittable->metalMakers.begin(); j != ai->unittable->metalMakers.end(); j++) {
 			CUnit *unit = j->second;
