@@ -207,7 +207,7 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 					else if (ai->cb->GetCurWind() < 10.0f) penalty += 1000000;
 				}
 				if (i->second->def->needGeo) {
-					if (geo_goal == ZeroVector) continue;
+					if ((geo_goal == ZeroVector) || eexceeding ) continue;
 					else if (e > 0.15f && ai->pathfinder->getETA(group, goal) > 30*15) penalty += 10000000;
 				}
 				candidates2.insert(std::pair<float,UnitType*>(float(i->first)-penalty, i->second));
