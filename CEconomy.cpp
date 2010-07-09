@@ -303,18 +303,15 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 			for (i = candidates.begin(); i != candidates.end(); i++) {
 				if (i->second->def->onoffable) continue; // nanotowers are not onoffable
 				int numFactories = ai->unittable->factories.size();
-				int allowedAssisters = numFactories*state;
 				CUnit *factory = ai->unittable->getUnit(latest_factory);
 				if ((!factory) && numFactories>0) { // latest factory destroyed but we still have more
 					factory = ai->unittable->factories.begin()->second;
 					latest_factory = factory->key;
 				}
-				if (ai->unittable->assisters.size()<allowedAssisters) {
-					if (factory) pos=factory->group->pos();
-					else if (!affordable) break;
-					else pos = ai->defensematrix->getBestDefendedPos(0);
-					ai->tasks->addBuildTask(bt, i->second, group, pos);
-				}
+				if (factory) pos=factory->group->pos();
+				else if (!affordable) break;
+				else pos = ai->defensematrix->getBestDefendedPos(0);
+				ai->tasks->addBuildTask(bt, i->second, group, pos);
 				break;
 			}
 			break;
@@ -537,18 +534,20 @@ void CEconomy::commandBuilderGroup(CGroup *group) {
 			if (group->busy) return;
 
 			/* If we have disabled mmakers - build more energy */
-			if (!areMMakersEnabled) {
+			if (!areMMakersEnabled)
 				buildOrAssist(*group, BUILD_EPROVIDER, EMAKER|LAND);
-				if (group->busy) return;
-			}
+			if (group->busy) return;
 
-			buildOrAssist(*group, BUILD_NANOTR, LAND|STATIC|ASSISTER, BUILDER);
+			int allowedAssisters = ai->unittable->factories.size()*state/2;
+			if (ai->unittable->assisters.size()<allowedAssisters)
+				buildOrAssist(*group, BUILD_NANOTR, LAND|STATIC|ASSISTER, BUILDER);
 			if (group->busy) return;
 
 			ATask *task = NULL;
 			/* If we can afford to assist a lab and it's close enough, do so */
-			if ((task = canAssistFactory(*group)) != NULL)
-				ai->tasks->addAssistTask(*task, *group);
+			if (ai->unittable->assisters.size() < (allowedAssisters/2+1))
+				if ((task = canAssistFactory(*group)) != NULL)
+					ai->tasks->addAssistTask(*task, *group);
 			if (group->busy) return;
 
 			/* if we need more factories - it's good time to build them */
