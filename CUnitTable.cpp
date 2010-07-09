@@ -399,7 +399,7 @@ unsigned int CUnitTable::categorizeUnit(UnitType *ut) {
 		cats |= MMAKER;
 
 	if ((ud->energyMake - ud->energyUpkeep) / ut->cost > 0.002 ||
-		ud->tidalGenerator || ud->windGenerator)
+		ud->tidalGenerator || ud->windGenerator || ud->needGeo)
 		cats |= EMAKER;
 /*
 	if (ud->windGenerator)
