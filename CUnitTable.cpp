@@ -435,7 +435,7 @@ unsigned int CUnitTable::categorizeUnit(UnitType *ut) {
 					break;
 				}
 			}
-			if (isCheapest) {
+			if (isCheapest && !(cats&ANTIAIR)) {
 				cats |= SCOUTER;
 				break;
 			}
