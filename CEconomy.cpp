@@ -300,18 +300,22 @@ void CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 		}
 
 		case BUILD_NANOTR: {
-			int numFactories = ai->unittable->factories.size();
-			int allowedAssisters = numFactories*state;
-			CUnit *factory = ai->unittable->getUnit(latest_factory);
-			if ((!factory) && numFactories>0) { // latest factory destroyed but we still have more
-				factory = ai->unittable->factories.begin()->second;
-				latest_factory = factory->key;
-			}
-			if (ai->unittable->assisters.size()<allowedAssisters) {
-				if (factory) pos=factory->group->pos();
-				else if (!affordable) break;
-				else pos = ai->defensematrix->getBestDefendedPos(0);
-				ai->tasks->addBuildTask(bt, i->second, group, pos);
+			for (i = candidates.begin(); i != candidates.end(); i++) {
+				if (i->second->def->onoffable) continue; // nanotowers are not onoffable
+				int numFactories = ai->unittable->factories.size();
+				int allowedAssisters = numFactories*state;
+				CUnit *factory = ai->unittable->getUnit(latest_factory);
+				if ((!factory) && numFactories>0) { // latest factory destroyed but we still have more
+					factory = ai->unittable->factories.begin()->second;
+					latest_factory = factory->key;
+				}
+				if (ai->unittable->assisters.size()<allowedAssisters) {
+					if (factory) pos=factory->group->pos();
+					else if (!affordable) break;
+					else pos = ai->defensematrix->getBestDefendedPos(0);
+					ai->tasks->addBuildTask(bt, i->second, group, pos);
+				}
+				break;
 			}
 			break;
 		}
