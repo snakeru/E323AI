@@ -1,5 +1,6 @@
 #ifndef HAIINTERFACE_H
 #define HAIINTERFACE_H
+#include "Defines.h"
 
 /* Spring AI Interface Headers */
 #if defined(BUILDING_AI_FOR_SPRING_0_81_2)
