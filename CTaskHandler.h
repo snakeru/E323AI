@@ -15,7 +15,7 @@ class AIClasses;
 class CGroup;
 class CUnit;
 
-enum task{BUILD, ASSIST, ATTACK, MERGE, FACTORY_BUILD, REPAIR};
+enum task{BUILD, ASSIST, ATTACK, MERGE, FACTORY_BUILD, REPAIR, UPGRADE};
 
 class ATask: public ARegistrar {
 	public:
@@ -93,6 +93,14 @@ class CTaskHandler: public ARegistrar {
 	public:
 		CTaskHandler(AIClasses *ai);
 		~CTaskHandler();
+
+		struct UpgradeTask: public ATask {
+			UpgradeTask(AIClasses *_ai): ATask(_ai) {t = UPGRADE;}
+			/* overload */
+			void update();
+			/* overload */
+			bool validate();
+		};
 
 		struct BuildTask: public ATask {
 			BuildTask(AIClasses *_ai): ATask(_ai) {t = BUILD;}
@@ -201,6 +209,9 @@ class CTaskHandler: public ARegistrar {
 
 		/* activate previosly enqueued task */
 		void activateTask(ATask *atask);
+
+		/* Add an upgrade task */
+		void addUpgradeTask(buildType build, UnitType *toBuild, CGroup &group, CUnit* oldUnit);
 
 		/* Add a fresh build task */
 		void addBuildTask(buildType build, UnitType *toBuild, CGroup &group, float3 &pos);

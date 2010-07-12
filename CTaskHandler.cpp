@@ -304,6 +304,7 @@ CTaskHandler::CTaskHandler(AIClasses *ai): ARegistrar(500, std::string("taskhand
 		taskStr[ATTACK]        = std::string("ATTACK");
 		taskStr[MERGE]         = std::string("MERGE");
 		taskStr[FACTORY_BUILD] = std::string("FACTORY_BUILD");
+		taskStr[UPGRADE]       = std::string("UPGRADE");
 	}
 
 	if (buildStr.empty()) {
@@ -417,6 +418,43 @@ void CTaskHandler::activateTask(ATask *atask) {
 		atask->remove();
 	else
 		atask->active = true;
+}
+
+/**************************************************************/
+/************************ UPGRADE TASK ************************/
+/**************************************************************/
+void CTaskHandler::addUpgradeTask(buildType build, UnitType *toBuild, CGroup &group, CUnit* oldUnit) {
+	UpgradeTask *upgradeTask = new UpgradeTask(ai);
+	upgradeTask->reg(*this); // register task in a task handler
+
+	upgradeTask->addGroup(group);
+	activeTasks[upgradeTask->key] = upgradeTask;
+	groupToTask[group.key] = upgradeTask;
+	
+	if (!ai->pathfinder->addGroup(group))
+		upgradeTask->remove();
+	else {
+		upgradeTask->active = true;
+		group.reclaim(oldUnit->key, false);
+		float3 pos = ai->cb->GetUnitPos(oldUnit->key);
+		addBuildTask(build, toBuild, group, pos); // enqueue new unit at the same place
+	}
+}
+
+bool CTaskHandler::UpgradeTask::validate() {
+	return true;
+}
+
+void CTaskHandler::UpgradeTask::update() {
+	//PROFILE(tasks-upgrade)
+	
+	ATask::update();
+
+	if (!active) return;
+	if (group->isMicroing() && group->isIdle()) {
+		group->micro(false); // if idle, our micro (reclaim) is done
+		remove();
+	}
 }
 
 /**************************************************************/
