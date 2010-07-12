@@ -54,6 +54,7 @@ void ATask::remove() {
 	}
 
 	active = false;
+	if (nextTask) ai->tasks->activateTask(nextTask);
 }
 
 // called on Group removing
@@ -401,6 +402,23 @@ ATask* CTaskHandler::getTaskByTarget(int uid) {
 	return NULL;
 }
 
+void CTaskHandler::activateTask(ATask *atask) {
+	assert(atask->t == BUILD);
+	atask->addGroup(*(atask->future_group));
+
+	activeBuildTasks[atask->key] = dynamic_cast<BuildTask*>(atask);
+
+	activeTasks[atask->key] = atask;
+	groupToTask[atask->future_group->key] = atask;
+	
+	LOG_II((*atask))
+	
+	if (!ai->pathfinder->addGroup(*(atask->future_group)))
+		atask->remove();
+	else
+		atask->active = true;
+}
+
 /**************************************************************/
 /************************* BUILD TASK *************************/
 /**************************************************************/
@@ -414,18 +432,9 @@ void CTaskHandler::addBuildTask(buildType build, UnitType *toBuild, CGroup &grou
 	buildTask->toBuild   = toBuild;
 	buildTask->eta       = int((ai->pathfinder->getETA(group, pos) + 100) * 1.3f);
 	buildTask->reg(*this); // register task in a task handler
-	buildTask->addGroup(group);
-
-	activeBuildTasks[buildTask->key] = buildTask;
-	activeTasks[buildTask->key] = buildTask;
-	groupToTask[group.key] = buildTask;
-	
-	LOG_II((*buildTask))
-	
-	if (!ai->pathfinder->addGroup(group))
-		buildTask->remove();
-	else
-		buildTask->active = true;
+	buildTask->future_group = &group;
+	if (!groupToTask[group.key]) activateTask(buildTask);
+	else groupToTask[group.key]->nextTask = buildTask;
 }
 
 bool CTaskHandler::BuildTask::validate() {

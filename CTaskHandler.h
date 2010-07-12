@@ -29,6 +29,7 @@ class ATask: public ARegistrar {
 			bornFrame = ai->cb->GetCurrentFrame();
 			validateInterval = 5 * 30;
 			nextValidateFrame = validateInterval;
+			nextTask = 0;
 		}
 		~ATask() {}
 
@@ -46,8 +47,12 @@ class ATask: public ARegistrar {
 			// task counter, used as task key; shared among all AI instances
 		std::list<ATask*> assisters;
 			// the assisters assisting this task
+		CGroup *future_group;
+			// the group to be involved; for Merge task it is master-group
 		CGroup *group;
 			// the group involved; for Merge task it is master-group
+		ATask* nextTask;
+			// task to execute after this one finished
 		bool isMoving;
 			// determine if all groups in this task are moving or not
 		float3 pos;
@@ -193,6 +198,9 @@ class CTaskHandler: public ARegistrar {
 
 		/* Overload */
 		void remove(ARegistrar &task);
+
+		/* activate previosly enqueued task */
+		void activateTask(ATask *atask);
 
 		/* Add a fresh build task */
 		void addBuildTask(buildType build, UnitType *toBuild, CGroup &group, float3 &pos);
