@@ -94,6 +94,7 @@ void CEconomy::remove(ARegistrar &object) {
 	LOG_II("CEconomy::remove " << (*group))
 
 	activeGroups.erase(group->key);
+	upgradedMexes.erase(group->key);
 	takenMexes.erase(group->key);
 	takenGeo.erase(group->key);
 
@@ -108,9 +109,12 @@ void CEconomy::addUnitOnCreated(CUnit &unit) {
 		CGroup *group = requestGroup();
 		group->addUnit(unit);
 		takenMexes[group->key] = group->pos();
+		if (unit.def->metalCost > 200) upgradedMexes[group->key] = group->pos();
 		CUnit *builder = ai->unittable->getUnit(group->firstUnit()->builtBy);
-		if (builder)
+		if (builder) {
 			takenMexes.erase(builder->group->key);
+			upgradedMexes.erase(builder->group->key);
+		}
 	}
 	else if(unit.type->def->needGeo) {
 		CGroup *group = requestGroup();
@@ -424,6 +428,7 @@ float3 CEconomy::getBestSpot(CGroup &group, std::list<float3> &resources, std::m
 		int numUnits = ai->cb->GetFriendlyUnits(&ai->unitIDs[0], *i, 1.1f * radius);
 		for (int u = 0; u < numUnits; u++) {
 			const int uid = ai->unitIDs[u];
+			if (ai->unittable->getUnit(uid)) continue; // it's our own unit. It must have been present in tracker, but it wasn't. Probably it's a mex that is about to be upgraded.
 			const UnitDef *ud = ai->cb->GetUnitDef(uid);
 			if (metal)
 				taken = UC(ud->id) & MEXTRACTOR;
@@ -451,6 +456,12 @@ float3 CEconomy::getBestSpot(CGroup &group, std::list<float3> &resources, std::m
 		tracker[group.key] = bestSpot;
 
 	return bestSpot;
+}
+
+float3 CEconomy::getClosestUpgradeableMetalSpot(CGroup &group) {
+	float3 spot = getBestSpot(group, GameMap::metalspots, upgradedMexes, true);
+	if (spot != ZeroVector) takenMexes[group.key]=spot;
+	return spot;
 }
 
 float3 CEconomy::getClosestOpenMetalSpot(CGroup &group) {
