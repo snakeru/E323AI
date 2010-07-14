@@ -139,7 +139,7 @@ void CEconomy::addUnitOnFinished(CUnit &unit) {
 //		nano turret. Set it to patrol mode and leave it alone
 		unit.patrol(ZeroVector);
 		unit.move_state(ROAM);
-		ai->unittable->assisters[unit.key] = &unit;
+		ai->unittable->nanotowers[unit.key] = &unit;
 	}
 	else if (c&MMAKER) {
 		ai->unittable->metalMakers[unit.key] = &unit;
@@ -542,13 +542,13 @@ void CEconomy::commandBuilderGroup(CGroup *group) {
 			if (group->busy) return;
 
 			int allowedAssisters = ai->unittable->factories.size()*state/2;
-			if (ai->unittable->assisters.size()<allowedAssisters)
+			if (ai->unittable->nanotowers.size()<allowedAssisters)
 				buildOrAssist(*group, BUILD_NANOTR, LAND|STATIC|ASSISTER, BUILDER);
 			if (group->busy) return;
 
 			ATask *task = NULL;
 			/* If we can afford to assist a lab and it's close enough, do so */
-			if (ai->unittable->assisters.size() < (allowedAssisters/2+1))
+			if (ai->unittable->nanotowers.size() < (allowedAssisters/2+1))
 				if ((task = canAssistFactory(*group)) != NULL)
 					ai->tasks->addAssistTask(*task, *group);
 			if (group->busy) return;

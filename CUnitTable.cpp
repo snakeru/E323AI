@@ -164,7 +164,7 @@ void CUnitTable::remove(ARegistrar &object) {
 	idle.erase(unit->key);
 	metalMakers.erase(unit->key);
 	activeUnits.erase(unit->key);
-	assisters.erase(unit->key);
+	nanotowers.erase(unit->key);
 	factories.erase(unit->key);
 	defenses.erase(unit->key);
 	unitsAliveTime.erase(unit->key);
