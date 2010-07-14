@@ -511,7 +511,7 @@ void CUnitTable::getBuildables(UnitType *ut, unsigned include, unsigned exclude,
 			
 			if (qualifies) {
 				float cost = j->second->cost;
-				candidates.insert(std::pair<float,UnitType*>(cost, j->second));
+				candidates.insert(std::pair<float,UnitType*>(-cost, j->second));
 			}
 		}
 	}

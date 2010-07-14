@@ -30,21 +30,14 @@ void CWishList::push(unsigned categories, buildPriority p) {
 			}
 
 			/* Determine which buildables we can afford */
-			std::multimap<float, UnitType*>::iterator i = candidates.begin();
+			std::multimap<float, UnitType*>::iterator i;
 			int iterations = candidates.size();
 			bool affordable = false;
-			while(iterations >= 0) {
-				if (ai->economy->canAffordToBuild(fac, i->second, 0))
-					affordable = true;
-				else
+                        for(i = candidates.begin(); i!= candidates.end(); i++)
+				if ((affordable=ai->economy->canAffordToBuild(fac, i->second, 0)))
 					break;
-
-				if (i == --candidates.end())
-					break;
-				iterations--;
-				i++;
-			}
-			
+			if (!affordable) i--;
+			// 'i' here is either most expensive, but affordable unit or just the cheapest
 			wishlist[fac->id].push_back(Wish(i->second, p, categories));
 			unique(wishlist[fac->id]);
 			std::stable_sort(wishlist[fac->id].begin(), wishlist[fac->id].end());
