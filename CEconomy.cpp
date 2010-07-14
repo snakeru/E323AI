@@ -115,7 +115,7 @@ void CEconomy::addUnitOnCreated(CUnit &unit) {
 	else if(unit.type->def->needGeo) {
 		CGroup *group = requestGroup();
 		group->addUnit(unit);
-		takenGeo[group->key] = group->pos();	
+		takenGeo[group->key] = group->pos();
 		CUnit *builder = ai->unittable->getUnit(group->firstUnit()->builtBy);
 		if (builder)
 			takenGeo.erase(builder->group->key);
@@ -829,7 +829,7 @@ bool CEconomy::canAffordToBuild(UnitType *builder, UnitType *utToBuild, int unit
 	float ePrediction = (eIncome - (eUsage - eUnitUsage) - eCost/buildTime)*buildTime - eCost + eNow;
 	mRequest          = mPrediction < 0.0f;
 	eRequest          = ePrediction < 0.0f;
-	return (mPrediction >= 0.0f && ePrediction >= 0.0f && mNow/mStorage >= 0.1f);
+	return (mPrediction >= 0.0f && ePrediction >= 0.0f && mCost*0.7 < mNow);
 }
 
 unsigned int CEconomy::getNextFactoryToBuild(CUnit *unit, int maxteachlevel) {

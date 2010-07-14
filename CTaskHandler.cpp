@@ -436,6 +436,7 @@ void CTaskHandler::addUpgradeTask(buildType build, UnitType *toBuild, CGroup &gr
 	else {
 		upgradeTask->active = true;
 		group.reclaim(oldUnit->key, false);
+		group.micro(true);
 		float3 pos = ai->cb->GetUnitPos(oldUnit->key);
 		addBuildTask(build, toBuild, group, pos); // enqueue new unit at the same place
 	}
