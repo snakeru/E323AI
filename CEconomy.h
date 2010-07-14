@@ -125,7 +125,7 @@ class CEconomy: public ARegistrar {
 		void controlMetalMakers();
 
 		/* build or assist on a certain task */
-		void buildOrAssist(CGroup &group, buildType bt, unsigned include, unsigned exclude = 0);
+		bool buildOrAssist(CGroup &group, buildType bt, unsigned include, unsigned exclude = 0);
 
 		/* See if a buildtask is in progress */
 		bool taskInProgress(buildType bt);
