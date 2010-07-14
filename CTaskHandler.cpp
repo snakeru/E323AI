@@ -423,7 +423,7 @@ void CTaskHandler::activateTask(ATask *atask) {
 /**************************************************************/
 /************************ UPGRADE TASK ************************/
 /**************************************************************/
-void CTaskHandler::addUpgradeTask(buildType build, UnitType *toBuild, CGroup &group, CUnit* oldUnit) {
+void CTaskHandler::addUpgradeTask(buildType build, UnitType *toBuild, CGroup &group, float3 &pos) {
 	UpgradeTask *upgradeTask = new UpgradeTask(ai);
 	upgradeTask->reg(*this); // register task in a task handler
 
@@ -435,9 +435,17 @@ void CTaskHandler::addUpgradeTask(buildType build, UnitType *toBuild, CGroup &gr
 		upgradeTask->remove();
 	else {
 		upgradeTask->active = true;
-		group.reclaim(oldUnit->key, false);
+		bool enqueue = false;
+		int numUnits = ai->cb->GetFriendlyUnits(&ai->unitIDs[0], pos, 1.1f * ai->cb->GetExtractorRadius());
+		for (int u = 0; u < numUnits; u++) {
+			const int uid = ai->unitIDs[u];
+			const UnitDef *ud = ai->cb->GetUnitDef(uid);
+			if (UC(ud->id) & MEXTRACTOR) {
+				group.reclaim(uid, enqueue);
+				enqueue = true;
+			}
+		}
 		group.micro(true);
-		float3 pos = ai->cb->GetUnitPos(oldUnit->key);
 		addBuildTask(build, toBuild, group, pos); // enqueue new unit at the same place
 	}
 }

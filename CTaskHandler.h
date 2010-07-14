@@ -211,7 +211,7 @@ class CTaskHandler: public ARegistrar {
 		void activateTask(ATask *atask);
 
 		/* Add an upgrade task */
-		void addUpgradeTask(buildType build, UnitType *toBuild, CGroup &group, CUnit* oldUnit);
+		void addUpgradeTask(buildType build, UnitType *toBuild, CGroup &group, float3 &pos);
 
 		/* Add a fresh build task */
 		void addBuildTask(buildType build, UnitType *toBuild, CGroup &group, float3 &pos);

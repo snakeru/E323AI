@@ -163,31 +163,15 @@ bool CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 	
 	ai->unittable->getBuildables(unit->type, include, exclude, candidates);
 	if (candidates.empty()) return false; // builder can build nothing we need
-	int alternativesCount = candidates.size();
 
 	/* Determine which of these we can afford */
-	std::multimap<float, UnitType*>::iterator i = candidates.begin();
-	int iterations = candidates.size() / (ai->cfgparser->getTotalStates() - state + 1);
-	bool affordable = false;
-	while(iterations >= 0) {
-		if (canAffordToBuild(unit->type, i->second, unit->key))
-			affordable = true;
-		else
-			break;
-
-		if (i == --candidates.end())
-			break;
-		iterations--;
-		i++;
-	}
-	
+	std::multimap<float, UnitType*>::iterator i;
 	/* Determine the location where to build */
 	float3 pos = group.pos();
 	float3 goal = pos;
 
-	/* Perform the build */
-	switch(bt) {
-		case BUILD_EPROVIDER: {
+	/* Perform the build. Energy building requires separate evaluation. */
+	if (bt == BUILD_EPROVIDER) {
                 /*
                     1. iterate over candidates
                     2. skip windgens if there is no wind
@@ -197,69 +181,73 @@ bool CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
                        - if none found - take first w/o penalty
                         - if still none found - take first
                 */
-			std::multimap<float, UnitType*> candidates2;
-			float penalty;
-			float3 geo_goal = pos;
-			float e = eNow/eStorage; 
-			geo_goal = getClosestOpenGeoSpot(group);
-			for (i = candidates.begin() ; i != candidates.end() ; i++) {
-				penalty = 0;
-				if (i->second->def->windGenerator > EPS) {
-					if (!windmap) continue;
-					else if (ai->cb->GetCurWind() < 10.0f) penalty += 1000000;
-				}
-				if (i->second->def->needGeo) {
-					if ((geo_goal == ZeroVector) || eexceeding ) continue;
-					else if (e > 0.15f && ai->pathfinder->getETA(group, goal) > 30*15) penalty += 10000000;
-				}
-
-				if (((i->second->def->energyMake - i->second->def->energyUpkeep)*100.0/eIncome)<(estall?3:5)) continue; // ban out too low-tech units
-
-				candidates2.insert(std::pair<float,UnitType*>(float(i->first)-penalty, i->second));
+		std::multimap<float, UnitType*> candidates2;
+		float mult;
+		float3 geo_goal = getClosestOpenGeoSpot(group);
+		float e = eNow/eStorage;
+		for (i = candidates.begin() ; i != candidates.end() ; i++) {
+			mult = 1;
+			if (i->second->def->windGenerator > EPS) {
+				if (!windmap) continue;
+				else if (ai->cb->GetCurWind() > 10.0f) mult = 2;
+			}
+			if (i->second->def->needGeo) {
+				if (geo_goal == ZeroVector) continue;
+				else if (ai->pathfinder->getETA(group, goal) > 30*150) mult=0.1;
 			}
 
-			if (candidates2.empty())
-				return false; // builder can build nothing we need
+			if (((i->second->def->energyMake - i->second->def->energyUpkeep)*100.0/eIncome)<(estall?3:5)) continue; // ban out too low-tech units
 
-			UnitType *affordable_unit, *first_wo_penalty;
-			affordable_unit=first_wo_penalty=0;
-
-			for (i = candidates2.begin() ; i != candidates2.end() ; i++) {
-				if (canAffordToBuild(unit->type, i->second, unit->key)) affordable_unit = i->second;
-				if ((!first_wo_penalty) && (float(i->first)>=0)) first_wo_penalty = i->second;
-			}
-
-			if (!affordable_unit) affordable_unit = first_wo_penalty;
-			if (!affordable_unit) affordable_unit = candidates2.begin()->second;
-			if (affordable_unit->def->needGeo) goal=geo_goal;
-
-			ai->tasks->addBuildTask(bt, affordable_unit, group, goal);
-
-			break;
+			candidates2.insert(std::pair<float,UnitType*>(float(i->first)*mult, i->second));
 		}
 
+		if (candidates2.empty()) {
+			takenGeo.erase(group.key);
+			return false; // builder can build nothing we need
+		}
+
+		for (i = candidates2.begin() ; i != candidates2.end() ; i++)
+			if (canAffordToBuild(unit->type, i->second, unit->key)) break;
+		if (i == candidates2.end()) i--;
+		if (i->second->def->needGeo) goal=geo_goal;
+		else takenGeo.erase(group.key);
+		ai->tasks->addBuildTask(bt, i->second, group, goal);
+
+		return group.busy;
+	}
+
+	bool affordable;
+	for (i = candidates.begin();i != candidates.end();i++)
+		if ((affordable = canAffordToBuild(unit->type, i->second, unit->key)))
+			break;
+	
+
+	if (!affordable)
+		if (bt == BUILD_MPROVIDER) i--; // build resource provider anyways ...
+		else return false;			 // ... other things - only if affordable
+
+	switch(bt) {
+
 		case BUILD_MPROVIDER: {
-			goal = getClosestOpenMetalSpot(group);
+			if (i->second->def->metalCost > 200)
+				goal = getClosestUpgradeableMetalSpot(group);
+			else
+				goal = getClosestOpenMetalSpot(group);
 			UnitType *mmaker = ai->unittable->canBuild(unit->type, LAND|MMAKER);
 			/* Very simple choice here - check if we have choice at all */
-			if ((goal == ZeroVector) && (mmaker == NULL))
-				break; // we can't build nothing
-			if ((goal != ZeroVector) && (mmaker == NULL)) {
-				ai->tasks->addBuildTask(bt, i->second, group, goal);
-				break; // it can't build mmakers, but there is free metal spot - going for it
+			if ((goal == ZeroVector) && (mmaker == NULL)) {
+				break; // we can't build anything
 			}
 			bool canBuildMMaker = areMMakersEnabled && ((eIncome - eUsage) >= METAL2ENERGY || eexceeding) && (mmaker != NULL);
-			if (goal == ZeroVector) {
-				// ok, there are no free metal spots, but we can build mmakers. Build something.
-				if (canBuildMMaker)
-					ai->tasks->addBuildTask(bt, mmaker, group, pos);
-				else
-					buildOrAssist(group, BUILD_EPROVIDER, EMAKER|LAND);
-				break;
-			}
-			bool willBuildMMak = false;
-			float eta = ai->pathfinder->getETA(group, goal);
-			/* the choice is not THAT easy. Let's think then - what should we build - mmaker or mex:
+			bool willBuildMMaker = false;
+			float eta=9999999;
+			if (goal != ZeroVector)
+				eta = ai->pathfinder->getETA(group, goal);
+			else if (canBuildMMaker)
+				willBuildMMaker = true;
+			else
+				return buildOrAssist(group, BUILD_EPROVIDER, EMAKER|LAND);
+			/* the choice is not THAT easy. Let's think what should we build - mmaker or mex:
 			Decision matrix:
 			         eReq&ms eReq&!ms  ms  !ms  eexc&ms eexc&!ms
 			Too Far   MMak     mex    MMak MMak  MMak    MMak
@@ -275,23 +263,26 @@ bool CEconomy::buildOrAssist(CGroup &group, buildType bt, unsigned include, unsi
 			      4.1 not mstalling - build mex
 			      4.2 build mak
 			*/
-			if (eta < 30*25);                    /*  1  */
+			if (willBuildMMaker);                /* already decided*/
+			else if (eta < 30*25);               /*  1  */
 			else if (eexceeding)                 /*  2  */
-				willBuildMMak = true;
-			else if (eta > 30*(unit->def->isCommander?50:150)) {              /*  3  */
+				willBuildMMaker = true;
+			else if (eta > 30*(unit->def->isCommander?100:250)) {              /*  3  */
 				if (eRequest);               /* 3.1 */
-				else willBuildMMak = true;   /* 3.2 */
+				else willBuildMMaker = true; /* 3.2 */
 			} else                               /*  4  */
 				if (!mstall);                /* 4.1 */
-				else willBuildMMak = true;   /* 4.2 */
+				else willBuildMMaker = true; /* 4.2 */
 			
 			// hard part of decision is done. Do it
-			if (!willBuildMMak)
-				ai->tasks->addBuildTask(bt, i->second, group, goal);
-			else if (canBuildMMaker)
+			UnitType* tmp_i = i->second;
+			if (willBuildMMaker && canBuildMMaker) {
+				/* Check if we can upgrade instead */
 				ai->tasks->addBuildTask(bt, mmaker, group, pos);
-			else
-				buildOrAssist(group, BUILD_EPROVIDER, EMAKER|LAND);
+				takenMexes.erase(group.key);
+				upgradedMexes.erase(group.key);
+			} else
+				ai->tasks->addUpgradeTask(bt, i->second, group, goal);
 			break;
 		}
 
