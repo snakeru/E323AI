@@ -52,8 +52,8 @@ float3 CDefenseMatrix::getDefenseBuildSite(UnitType *tower) {
 	float min = MAX_FLOAT, max = -MAX_FLOAT, maxHeight = -MAX_FLOAT;
 	float D = ((ai->intel->getEnemyVector() - pos).Length2D() + radius)/HEIGHT2REAL;
 	int R = ceil(radius);
-	for (int i = -R; i <= R; i++) {
-		for (int j = -R; j <= R; j++) {
+	for (int i = -R; i <= R; i += (R/20+1)) {
+		for (int j = -R; j <= R; j+=(R/20+1)) {
 			int x = round((pos.x+j)/HEIGHT2REAL);
 			int z = round((pos.z+i)/HEIGHT2REAL);
 			if (x < 0 || z < 0 || x > X-1 || z > Z-1)
